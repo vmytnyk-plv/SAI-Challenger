@@ -32,17 +32,31 @@ RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y \
         python3-paramiko \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip3 install --upgrade pip
+
 WORKDIR /sai
 
 # Install SAI attributes metadata JSON generator
 COPY scripts/gen_attr_list /sai/gen_attr_list
 COPY sai.env /
 
-RUN git clone https://github.com/opencomputeproject/SAI.git \
-        && cd SAI \
-        && . /sai.env \
-        && git checkout ${SAI_ID} \
-        && cd meta \
+# Copy SAI archive doesn't matter if it exists or not
+COPY *SAI.tgz /tmp/
+
+RUN if [ ! -f "/tmp/SAI.tgz" ]; then \
+    # If SAI.tgz not provided, download it
+    git clone https://github.com/opencomputeproject/SAI.git && git --git-dir=SAI/.git checkout ${SAI_ID}; \
+else \
+    mkdir SAI && cd SAI && tar -xvmf /tmp/SAI.tgz && rm /tmp/SAI.tgz; \
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then \
+        git init && git add . && git commit -m "Add all files" \
+        && git remote add origin https://github.com/opencomputeproject/SAI.git \
+        && git fetch --no-tags origin; \
+    fi \
+fi
+
+RUN cd SAI && . /sai.env \
+        && cd meta && make clean \
         && make saimetadata.h \
         && make saimetadata.c \
         && cd .. \
@@ -60,8 +74,7 @@ RUN git clone https://github.com/opencomputeproject/SAI.git \
         && mkdir -p /etc/sai \
         && ./attr_list_generator > /etc/sai/sai.json.tmp \
         && python3 -mjson.tool /etc/sai/sai.json.tmp > /etc/sai/sai.json \
-        && rm /etc/sai/sai.json.tmp \
-        && rm -rf /sai/SAI
+        && rm /etc/sai/sai.json.tmp
 
 # Install SAI-C dependencies
 RUN pip3 install pytest pytest_dependency pytest-html aenum pdbpp macaddress click==8.0

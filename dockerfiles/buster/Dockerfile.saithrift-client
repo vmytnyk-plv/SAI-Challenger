@@ -12,15 +12,13 @@ WORKDIR /sai
 RUN apt-get -o Acquire::Check-Valid-Until=false update \
         && apt install -y libthrift-dev libthrift-0.11.0 \
         && pip3 install ctypesgen thrift==0.11.0 \
-        && apt install -y ${SAIGEN_DEPS} \
-        && git clone https://github.com/opencomputeproject/SAI.git \
-        && cd SAI \
-        && . /sai/sai.env \
-        && git checkout ${SAI_ID} \
+        && apt install -y ${SAIGEN_DEPS}
+
+RUN cd SAI && . /sai/sai.env \
         && cp inc/* /usr/include/sai/ \
         && cp experimental/* /usr/include/sai/ \
         && cd test/saithriftv2/ \
-        && make meta \
+        && make clean && make meta \
         && make install-pylib \
         && cd dist \
         && tar zxf saithrift-0.9.tar.gz \
