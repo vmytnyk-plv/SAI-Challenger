@@ -17,6 +17,7 @@ class SaiNpu(Sai):
         self.default_vlan_oid = "oid:0x0"
         self.default_vlan_id = "0"
         self.default_vrf_oid = "oid:0x0"
+        self.default_switch_smac = None
         self.port_oids = []
         self.dot1q_bp_oids = []
         self.hostif_dataplane = None
@@ -48,6 +49,10 @@ class SaiNpu(Sai):
         # Default .1Q bridge
         self.dot1q_br_oid = self.get(self.switch_oid, ["SAI_SWITCH_ATTR_DEFAULT_1Q_BRIDGE_ID"]).oid()
         assert self.dot1q_br_oid != "oid:0x0"
+
+        # Default SMAC
+        self.default_switch_smac = self.get(self.switch_oid, ["SAI_SWITCH_ATTR_SRC_MAC_ADDRESS"]).value()
+        assert self.default_switch_smac != "0"
 
         # Default VLAN
         self.default_vlan_oid = self.get(self.switch_oid, ["SAI_SWITCH_ATTR_DEFAULT_VLAN_ID"]).oid()
@@ -89,6 +94,9 @@ class SaiNpu(Sai):
                 admin_state = self.get(port_oid, ["SAI_PORT_ATTR_ADMIN_STATE"]).value()
                 if port_oid != cpu_port_oid and admin_state == "true":
                     self.assert_port_oper_up(port_oid)
+
+    def deinit(self):
+        self.switch_oid = self.remove(SaiObjType.SWITCH)
 
     def cleanup(self):
         super().cleanup()

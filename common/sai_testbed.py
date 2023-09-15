@@ -3,6 +3,7 @@ import os
 import json
 import glob
 import logging
+import traceback
 
 from saichallenger.common.sai_dut import SaiDut
 from saichallenger.common.sai_npu import SaiNpu
@@ -107,6 +108,7 @@ class SaiTestbed():
         self.base_dir = base_dir
         self.with_traffic = with_traffic
         self.skip_dataplane = skip_dataplane
+        self.teardown_cb_list = list()
 
     @staticmethod
     def spawn_asic(base_dir, cfg, asic_type="npu"):
@@ -234,6 +236,8 @@ class SaiTestbed():
 
         for dut in self.dut:
             dut.deinit()
+        for npu in self.npu:
+            npu.deinit()
 
     def setup(self):
         """
@@ -248,3 +252,34 @@ class SaiTestbed():
         """
         for dp in self.dataplane:
             dp.teardown()
+        self.exec_teardown_callbacks()
+
+    def exec_teardown_callbacks(self):
+        for guard in self.teardown_cb_list:
+            logging.debug('Guard=%s' % (guard))
+            try: guard.teardown()
+            except Exception as e:
+                logging.error('Exception on teardown: "%s", set in:\n%s' % (e, guard.trace()))
+        self.teardown_cb_list = list()
+
+    def push_teardown_callback(self, func, *args, **kargs):
+        class Guard(object):
+            def __init__(self, tb):
+                self.tb = tb
+                self.run = True
+            def cancel(self):
+                self.run = False
+            def trace(self):
+                return "".join(self.tb)
+            def teardown(self):
+                if self.run:
+                    func(*args, **kargs)
+            def __str__(self):
+                return f"{func.__name__}({args}, {kargs})"
+        guard = Guard(traceback.format_stack(limit=3)[1:-1])
+        self.teardown_cb_list.insert(0, guard)
+        return guard
+
+    def call_teardown_callback(self, pop=True):
+        guard = self.teardown_cb_list.pop(0) if pop else self.teardown_cb_list[0]
+        guard.teardown()
