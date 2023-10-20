@@ -123,7 +123,6 @@ def send_simple_random_udp_traffic_m_dst(flow_name, dataplane, tx_port_name,
     f1 = dataplane.configuration.flows.flow(name=flow_name)[-1]
 
     f1.tx_rx.port.tx_name = tx_port_name
-    #f1.tx_rx.port.rx_names = rx_port_name
     f1.size.fixed = 120                              # fixed packet size
     f1.duration.fixed_packets.packets = pkt_cnt     # send n packets and stop
     f1.metrics.enable = True
@@ -318,7 +317,7 @@ def test_l3_fwd(testbed, npu, dataplane, ip):
     # verify traffic
     check_flow_tx_rx_frames_stats(dataplane, f1.name)
 
-def test_fdb_events(testbed, npu, dataplane):
+def test_fdb(testbed, npu, dataplane):
     """
     Description:
     Verify correctness of FDB atributes values after events
@@ -425,7 +424,7 @@ def test_lag(testbed, npu, dataplane):
     
     Test scenario:
     1. create LAG and check it is empty
-    2. create LAG member and check it belongs to correct LAG and port
+    2. create LAG members and check they belongs to correct LAG and port
     3. check that unable to create existent LAG member
     4. send traffic forward and backward
     5. check that flood touch only one of LAG member
@@ -443,7 +442,9 @@ def test_lag(testbed, npu, dataplane):
         npu.set(port, ["SAI_PORT_ATTR_ADMIN_STATE", "true"])
     log.debug(f" Configured ports: {dataplane.configuration.ports}")
 
-    #create lag
+    # remove port from default bridge???
+    
+    # create lag
     object_list_t = "100:oid:0x0"
     lag0 = npu.create(SaiObjType.LAG)
     testbed.push_teardown_callback(npu.remove, lag0)
@@ -508,7 +509,6 @@ def test_lag(testbed, npu, dataplane):
     rx_cnt = get_port_rx_frames_stats(dataplane, tx_port1_lag)
     assert rx_cnt == 0
 
-
     # send traffic back
     tx_port = rx_port
     rx_port = tx_port0_lag
@@ -556,7 +556,6 @@ def test_l2_lag_hash(testbed, npu, dataplane):
     log.debug(f" Configured ports: {dataplane.configuration.ports}")
 
     #create lag
-    object_list_t = "100:oid:0x0"
     lag0 = npu.create(SaiObjType.LAG)
     testbed.push_teardown_callback(npu.remove, lag0)
 
@@ -577,7 +576,7 @@ def test_l2_lag_hash(testbed, npu, dataplane):
 
     # get hash fields
     hash_attr_list = []
-    s32_list_t = '100:10'
+    s32_list_t = '100:0'
     hash_attr_list = npu.get(hash_id, ["SAI_HASH_ATTR_NATIVE_HASH_FIELD_LIST", s32_list_t]).to_list()
     log.debug(f"HASH_LIST: {hash_attr_list}")
     
@@ -588,7 +587,7 @@ def test_l2_lag_hash(testbed, npu, dataplane):
 
     # check hash fields setted
     hash_attr_list = []
-    s32_list_t = '100:10'
+    s32_list_t = '100:0'
     hash_attr_list = npu.get(hash_id, ["SAI_HASH_ATTR_NATIVE_HASH_FIELD_LIST", s32_list_t]).to_list()
     log.debug(f"HASH_LIST: {hash_attr_list}")
     assert hash_attr_list[0] == 'SAI_NATIVE_HASH_FIELD_SRC_IP'
